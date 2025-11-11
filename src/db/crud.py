@@ -105,6 +105,8 @@ def update_job_post(job_id: str, update_data: Dict[str, Any]) -> Optional[Dict[s
 def create_candidate(candidate_data: Dict[str, Any], job_post_id: str) -> Dict[str, Any]:
     """Creates a new candidate application."""
     candidate_data["job_post_id"] = job_post_id
+    # Ensure resume_url exists to satisfy Pydantic schema
+    candidate_data.setdefault("resume_url", "")
     candidate_data.setdefault("stage", "APPLIED")
     candidate_data.setdefault("application_date", datetime.now())
     return _simulate_save("candidates", candidate_data)

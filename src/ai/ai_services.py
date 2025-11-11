@@ -2,6 +2,12 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List
 from uuid import uuid4
 
+# Optional integration: gemini_workflows for richer feedback if available
+try:
+    from src.gemini_workflows import get_gemini_response
+except Exception:
+    get_gemini_response = None
+
 # Very small deterministic "AI" helpers for demo/testing. Replace with real models later.
 
 KEYWORDS = ["python", "fastapi", "sql", "docker", "aws", "react", "lead", "machine learning", "nlp"]
@@ -36,7 +42,17 @@ def score_cv(cv_text: str) -> Dict[str, Any]:
     else:
         feedback_lines.append("Low match — suggest tailoring the CV to the job description and adding concrete examples.")
 
-    return {"ats_score": ats, "feedback": " ".join(feedback_lines), "highlights": matches}
+    base = {"ats_score": ats, "feedback": " ".join(feedback_lines), "highlights": matches}
+    # If gemini is available, generate a richer feedback paragraph
+    if get_gemini_response:
+        try:
+            prompt = f"Provide a concise recruitment-style feedback for the following CV:\n\n{cv_text}\n\nInclude strengths, weaknesses, and suggested next steps in 3 short bullets."
+            detailed = get_gemini_response(prompt)
+            base["detailed_feedback"] = detailed
+        except Exception:
+            # ignore external failures, return base
+            pass
+    return base
 
 
 def generate_oa(cv_text: str, role: str) -> Dict[str, Any]:
@@ -57,6 +73,47 @@ def generate_oa(cv_text: str, role: str) -> Dict[str, Any]:
     feedback = "Generated offer letter template and compensation guidance." 
 
     return {"offer_text": offer_text, "feedback": feedback}
+
+
+def generate_assessment_questions(cv_text: str, job_description: str, n: int = 5) -> List[Dict[str, Any]]:
+    """Generate assessment questions tailored to the candidate CV and job description.
+    If Gemini is available use it; otherwise fall back to deterministic templates.
+    Returns list of {question, type} dicts.
+    """
+    if get_gemini_response:
+        try:
+            prompt = (
+                f"You are an expert hiring manager. Generate {n} concise assessment questions for a candidate applying to this role."
+                f" Job description:\n{job_description}\n\nCandidate CV:\n{cv_text}\n\nRespond with a JSON array of objects with keys 'question' and 'type' (coding, open-ended, technical, experience)."
+            )
+            resp = get_gemini_response(prompt)
+            # Try to parse JSON from response; be tolerant
+            import json
+            try:
+                parsed = json.loads(resp)
+                if isinstance(parsed, list):
+                    return parsed[:n]
+            except Exception:
+                # fallback: wrap the text into a single open-ended question
+                pass
+        except Exception:
+            pass
+
+    # Deterministic fallback: generate template questions from keywords
+    jd = (job_description or "").lower()
+    questions = []
+    if "python" in jd or "fastapi" in jd:
+        questions.append({"question": "Explain how you would design a FastAPI endpoint to handle file uploads and background processing.", "type": "technical"})
+        questions.append({"question": "Write a short function to parse and validate JSON payloads in Python.", "type": "coding"})
+    if "react" in jd or "frontend" in jd:
+        questions.append({"question": "Build a React component that fetches and displays paginated data.", "type": "coding"})
+        questions.append({"question": "Explain approaches to state management in a large React app.", "type": "technical"})
+
+    # fill with generic questions
+    while len(questions) < n:
+        questions.append({"question": "Describe a challenging problem you solved recently and how you approached it.", "type": "open-ended"})
+
+    return questions[:n]
 
 
 def schedule_ai_interview(candidate_id: str, job_id: str, preferred_times: List[str]) -> Dict[str, Any]:

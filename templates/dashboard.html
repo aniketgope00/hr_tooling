@@ -89,6 +89,17 @@
     <div id="candidates-tab" class="tab-content hidden">
       <div class="bg-white rounded-lg shadow-md p-6">
         <h2 class="text-2xl font-bold mb-6 text-gray-900">Candidates & AI Feedback</h2>
+        <!-- Upload CV for selected job -->
+        <form id="upload-cv-form" class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input type="hidden" id="job-id-input" name="job_id" />
+          <input type="text" name="full_name" placeholder="Candidate full name" class="px-3 py-2 rounded border" />
+          <input type="email" name="email" placeholder="Candidate email" class="px-3 py-2 rounded border" />
+          <div class="flex items-center gap-2">
+            <input type="file" name="file" accept=".txt,.pdf,.doc,.docx" required class="px-2 py-1" />
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">Upload CV & Analyze</button>
+          </div>
+        </form>
+
         <div id="candidates-list" class="space-y-4">
           <p class="text-gray-500">Select a job above to view candidates and their AI feedback.</p>
         </div>
@@ -255,6 +266,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Load initial data
   await loadJobs();
+  // hook upload form
+  const uploadForm = document.getElementById('upload-cv-form');
+  if (uploadForm) uploadForm.addEventListener('submit', handleUploadCV);
 });
 
 async function loadUserInfo() {
@@ -399,9 +413,45 @@ async function viewJobCandidates(jobId) {
       const candidates = await res.json();
       renderCandidatesTab(candidates);
       switchTab('candidates');
+      // populate hidden job id on upload form
+      const jobIdInput = document.getElementById('job-id-input');
+      if (jobIdInput) jobIdInput.value = jobId;
     }
   } catch (err) {
     console.error('Error:', err);
+  }
+}
+
+async function handleUploadCV(e) {
+  e.preventDefault();
+  const form = e.target;
+  const fd = new FormData(form);
+  const jobId = fd.get('job_id') || selectedJobId;
+  if (!jobId) { showMessage('Select a job first', true); return; }
+
+  try {
+    const res = await fetch(`/candidates/${jobId}/upload_cv`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${currentToken}` },
+      body: fd
+    });
+    if (res.ok) {
+      const data = await res.json();
+      showMessage('CV uploaded and analyzed');
+      // refresh candidate list for the job
+      await viewJobCandidates(jobId);
+      // open candidate modal with AI info
+      if (data && data.candidate && data.candidate.id) {
+        showCandidateDetails(data.candidate.id);
+      }
+      form.reset();
+    } else {
+      const err = await res.json().catch(()=>({detail:'Upload failed'}));
+      showMessage(err.detail || 'Failed to upload CV', true);
+    }
+  } catch (err) {
+    console.error('Upload error', err);
+    showMessage('Network error during upload', true);
   }
 }
 
@@ -452,11 +502,79 @@ async function showCandidateDetails(candidateId) {
         <p><strong>Email:</strong> ${candidate.email}</p>
         <p><strong>Stage:</strong> ${candidate.stage}</p>
         <p><strong>CV:</strong></p>
-        <div class="bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap text-gray-700">${candidate.cv_text || 'N/A'}</div>
+        <div class="bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap text-gray-700 max-h-48 overflow-y-auto">${candidate.cv_text ? candidate.cv_text.substring(0, 1000) : 'N/A'}</div>
         ${aiHtml}
+        <div id="assessment-result" class="hidden bg-green-50 p-4 rounded-lg border border-green-200 mt-4">
+          <h4 class="font-semibold text-green-900 mb-2">Online Assessment (OA)</h4>
+          <div id="oa-questions-display" class="space-y-3 text-sm"></div>
+          <p class="text-xs text-gray-600 mt-2"><strong>Completion Link:</strong> <span id="oa-completion-link" class="font-mono"></span></p>
+        </div>
+        <div class="mt-4 flex gap-2">
+          <button id="schedule-oa-btn" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">Schedule OA (Generate Assessment)</button>
+          <button id="generate-offer-btn" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Generate Offer</button>
+        </div>
       `;
 
       document.getElementById('candidate-modal').classList.remove('hidden');
+      
+      // Schedule OA button handler
+      const scheduleOaBtn = document.getElementById('schedule-oa-btn');
+      if (scheduleOaBtn) {
+        scheduleOaBtn.addEventListener('click', async () => {
+          try {
+            const res = await fetch(`/candidates/${candidate.id}/schedule_oa`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ num_questions: 5 })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const assessment = data.assessment;
+              // Display assessment questions
+              const questionsDiv = document.getElementById('oa-questions-display');
+              const questions = assessment.generated_questions || [];
+              questionsDiv.innerHTML = questions.map((q, i) => `
+                <div>
+                  <p class="font-semibold">Q${i+1}: ${q.question}</p>
+                  <p class="text-xs text-gray-600">Type: ${q.type}</p>
+                </div>
+              `).join('');
+              document.getElementById('oa-completion-link').textContent = assessment.completion_link || 'N/A';
+              document.getElementById('assessment-result').classList.remove('hidden');
+              showMessage(`Assessment generated and sent to ${candidate.email}`);
+            } else {
+              const err = await res.json().catch(() => ({detail: 'Failed'}));
+              showMessage(err.detail || 'Failed to generate OA', true);
+            }
+          } catch (err) {
+            console.error('Error:', err);
+            showMessage('Network error generating OA', true);
+          }
+        });
+      }
+
+      // Generate Offer button handler (old flow)
+      const generateOfferBtn = document.getElementById('generate-offer-btn');
+      if (generateOfferBtn) {
+        generateOfferBtn.addEventListener('click', async () => {
+          try {
+            const res = await fetch('/ai/generate_oa', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ candidate_id: candidate.id, role: candidate.job_title || 'Role' })
+            });
+            if (res.ok) {
+              const oa = await res.json();
+              // show OA in alert or modal
+              alert(`Offer Letter:\n\n${oa.offer_text}`);
+            } else {
+              showMessage('Failed to generate offer', true);
+            }
+          } catch (err) {
+            showMessage('Network error', true);
+          }
+        });
+      }
     }
   } catch (err) {
     console.error('Error:', err);

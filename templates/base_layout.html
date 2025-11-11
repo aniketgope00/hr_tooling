@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HireTribe: AI Recruiting{% endblock %}</title>
+    <!-- Load Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configure Tailwind for custom colors and Inter font
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'hiretribe-primary': '#4f46e5', // Indigo-600
+                        'hiretribe-secondary': '#6366f1', // Indigo-500
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <!-- Placeholder for additional styles/scripts for specific pages -->
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="bg-gray-50 font-sans antialiased text-gray-800">
+
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand Name -->
+                <a href="/" class="flex items-center space-x-2">
+                    <span class="text-2xl font-extrabold text-hiretribe-primary tracking-tight">
+                        hiretribe.
+                    </span>
+                </a>
+
+                <!-- Navigation Links / Auth -->
+                <div id="nav-auth" class="flex items-center space-x-4">
+                    <!-- Default (not logged in): will be updated by client-side JS when token present -->
+                    <a href="/login" class="text-gray-600 hover:text-hiretribe-primary px-3 py-2 rounded-lg font-medium transition duration-150">
+                        Login
+                    </a>
+                    <a href="/signup" class="px-4 py-2 bg-hiretribe-primary text-white font-semibold rounded-lg shadow-md hover:bg-hiretribe-secondary transition duration-150 border border-transparent">
+                        Sign Up
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content Block - To be filled by child templates (like index.html) -->
+    <main class="min-h-[calc(100vh-16rem)]">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 mt-16 pt-8 pb-4 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-500">
+            <div class="mb-4">
+                <span class="font-bold text-lg text-hiretribe-primary">hiretribe.</span> &copy; 2025 All rights reserved.
+            </div>
+            <div class="flex justify-center space-x-6 text-xs mb-4">
+                <a href="#" class="hover:text-hiretribe-primary">Privacy Policy</a>
+                <a href="#" class="hover:text-hiretribe-primary">Terms of Service</a>
+                <a href="#" class="hover:text-hiretribe-primary">Contact</a>
+            </div>
+            <p>Built with FastAPI and powered by modern AI screening tools.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Client-side nav update: if access_token is present show Dashboard + Logout
+        (function(){
+            try {
+                const nav = document.getElementById('nav-auth');
+                if (!nav) return;
+                const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+                if (token) {
+                    nav.innerHTML = '';
+                    const dash = document.createElement('a');
+                    dash.href = '/dashboard';
+                    dash.className = 'text-gray-600 hover:text-hiretribe-primary px-3 py-2 rounded-lg font-medium transition duration-150';
+                    dash.textContent = 'Dashboard';
+                    const logout = document.createElement('button');
+                    logout.className = 'px-4 py-2 bg-white text-hiretribe-primary font-semibold rounded-lg shadow hover:bg-gray-50 border border-hiretribe-primary';
+                    logout.textContent = 'Logout';
+                    logout.addEventListener('click', function(){
+                        localStorage.removeItem('access_token');
+                        // redirect to login page after logout
+                        window.location.href = '/login';
+                    });
+                    nav.appendChild(dash);
+                    nav.appendChild(logout);
+                }
+            } catch (e) {
+                console.warn('nav auth script error', e);
+            }
+        })();
+    </script>
+    {% block body_extra %}{% endblock %}
+</body>
+</html>

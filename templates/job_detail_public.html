@@ -1,0 +1,73 @@
+{% extends "base_layout.html" %}
+
+{% block title %}Apply | hiretribe.{% endblock %}
+
+{% block content %}
+<section class="min-h-[60vh] py-8">
+  <div class="max-w-3xl mx-auto px-4">
+    <div id="job-wrap" class="bg-white rounded-lg shadow p-6">Loading job...</div>
+  </div>
+</section>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const jobId = '{{ job_id }}';
+  const wrap = document.getElementById('job-wrap');
+  wrap.innerHTML = 'Loading...';
+
+  fetch(`/public/jobs/${jobId}`)
+    .then(r => { if (!r.ok) throw new Error('Job not found'); return r.json(); })
+    .then(job => {
+      wrap.innerHTML = `
+        <h2 class="text-xl font-semibold mb-2">${escapeHtml(job.title)}</h2>
+        <p class="text-sm text-gray-700 mb-4">${escapeHtml(job.description || '')}</p>
+        <form id="apply-form" class="space-y-3">
+          <div>
+            <label class="block text-sm">Full name</label>
+            <input id="full_name" required class="mt-1 w-full rounded border-gray-200 p-2" />
+          </div>
+          <div>
+            <label class="block text-sm">Email</label>
+            <input id="email" type="email" required class="mt-1 w-full rounded border-gray-200 p-2" />
+          </div>
+          <div>
+            <label class="block text-sm">Resume URL</label>
+            <input id="resume_url" type="url" class="mt-1 w-full rounded border-gray-200 p-2" />
+          </div>
+          <div>
+            <button type="submit" class="px-4 py-2 bg-hiretribe-primary text-white rounded">Submit Application</button>
+            <span id="apply-msg" class="ml-3 text-sm text-red-600"></span>
+          </div>
+        </form>
+      `;
+
+      document.getElementById('apply-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('apply-msg');
+        msg.textContent = '';
+        const payload = {
+          full_name: document.getElementById('full_name').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          resume_url: document.getElementById('resume_url').value.trim(),
+          job_post_id: job.id
+        };
+        try {
+          const res = await fetch('/candidates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          if (!res.ok) {
+            const p = await res.json().catch(() => ({}));
+            throw new Error(p.detail || 'Failed to submit application');
+          }
+          msg.classList.remove('text-red-600'); msg.classList.add('text-green-600');
+          msg.textContent = 'Application submitted. Thank you!';
+        } catch (err) {
+          msg.textContent = err.message || 'Error submitting application';
+        }
+      });
+    }).catch(err => { wrap.innerHTML = '<div class="text-red-600">Job not available.</div>'; console.error(err); });
+
+  function escapeHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+});
+</script>
+{% endblock %}

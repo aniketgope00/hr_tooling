@@ -1,0 +1,49 @@
+{% extends "base_layout.html" %}
+
+{% block title %}Jobs | hiretribe.{% endblock %}
+
+{% block content %}
+<section class="min-h-[60vh] py-8">
+  <div class="max-w-5xl mx-auto px-4">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold">Open Positions</h1>
+    </div>
+
+    <div id="public-jobs" class="space-y-4">Loading jobs...</div>
+  </div>
+</section>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('public-jobs');
+  el.textContent = 'Loading...';
+  fetch('/public/jobs')
+    .then(r => r.json())
+    .then(jobs => {
+      if (!jobs || jobs.length === 0) {
+        el.innerHTML = '<div class="text-sm text-gray-600">No open positions right now.</div>';
+        return;
+      }
+      el.innerHTML = '';
+      jobs.forEach(job => {
+        const d = document.createElement('div');
+        d.className = 'p-4 bg-white rounded shadow flex justify-between items-center';
+        d.innerHTML = `
+          <div>
+            <div class="font-semibold">${escapeHtml(job.title)}</div>
+            <div class="text-sm text-gray-600">${escapeHtml(job.description || '')}</div>
+          </div>
+          <div>
+            <a href="/jobs/${job.id}/apply" class="px-4 py-2 bg-hiretribe-primary text-white rounded">Apply</a>
+          </div>
+        `;
+        el.appendChild(d);
+      });
+    }).catch(err => { el.innerHTML = '<div class="text-red-600">Could not load jobs.</div>'; console.error(err); });
+
+  function escapeHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+});
+</script>
+{% endblock %}

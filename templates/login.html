@@ -1,0 +1,129 @@
+{% extends "base_layout.html" %}
+
+{% block title %}Login | hiretribe.{% endblock %}
+
+{% block content %}
+<section class="min-h-[60vh] flex items-center justify-center py-12">
+  <div class="w-full max-w-md bg-white rounded-xl shadow-md p-8">
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">Welcome back</h2>
+    <p class="text-sm text-gray-600 mb-6">Log in to continue to your dashboard.</p>
+
+  <form id="login-form" class="space-y-4" method="post" action="/token" onsubmit="return false;">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Email</label>
+        <!-- name changed to 'username' so non-JS form POST matches OAuth2PasswordRequestForm -->
+        <input id="email" name="username" type="email" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm focus:ring-hiretribe-primary focus:border-hiretribe-primary" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Password</label>
+        <input id="password" name="password" type="password" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm focus:ring-hiretribe-primary focus:border-hiretribe-primary" />
+      </div>
+
+      <div>
+        <button type="submit" class="w-full px-4 py-2 bg-hiretribe-primary text-white font-semibold rounded-lg hover:bg-hiretribe-secondary">Log in</button>
+      </div>
+      <!-- grant_type for OAuth2 compatibility when JS is disabled and the form posts directly -->
+      <input type="hidden" name="grant_type" value="password" />
+
+      <div id="login-message" class="text-sm text-center text-red-600"></div>
+
+      <div class="text-center text-sm text-gray-500">
+        Don't have an account? <a href="/signup" class="text-hiretribe-primary font-semibold">Sign up</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block body_extra %}
+<script>
+// Attach form handler when DOM is ready
+function setupLoginForm() {
+  const form = document.getElementById('login-form');
+  if (!form) {
+    console.warn('login-form not found, retrying...');
+    setTimeout(setupLoginForm, 100);
+    return;
+  }
+
+  // Override default form submission
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const msgEl = document.getElementById('login-message');
+    msgEl.textContent = '';
+    msgEl.className = 'text-sm text-center';
+
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+      msgEl.classList.add('text-red-600');
+      msgEl.textContent = 'Please provide email and password.';
+      return false;
+    }
+
+    try {
+      const body = new URLSearchParams();
+      body.append('username', email);
+      body.append('password', password);
+      body.append('grant_type', 'password');
+
+      const res = await fetch('/token', {
+        method: 'POST',
+        headers: { 
+          'Accept': 'application/json', 
+          'Content-Type': 'application/x-www-form-urlencoded' 
+        },
+        body: body.toString()
+      });
+
+      let payload = null;
+      try {
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          payload = await res.json();
+        } else {
+          const text = await res.text();
+          payload = text ? JSON.parse(text) : {};
+        }
+      } catch (parseErr) {
+        console.error('Parse error:', parseErr);
+        payload = {};
+      }
+
+      if (res.ok && payload && payload.access_token) {
+        // Store token for JS API calls
+        localStorage.setItem('access_token', payload.access_token);
+        msgEl.classList.add('text-green-600');
+        msgEl.textContent = 'Logged in. Redirecting...';
+        setTimeout(() => { 
+          window.location.href = '/dashboard'; 
+        }, 300);
+        return false;
+      } else {
+        const detail = (payload && (payload.detail || payload.error)) || `Login failed (${res.status})`;
+        msgEl.classList.add('text-red-600');
+        msgEl.textContent = detail;
+        console.warn('Login error:', detail);
+        return false;
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      msgEl.classList.add('text-red-600');
+      msgEl.textContent = 'Network error. Please try again.';
+      return false;
+    }
+  };
+}
+
+// Set up form immediately
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', setupLoginForm);
+} else {
+  setupLoginForm();
+}
+</script>
+{% endblock %}

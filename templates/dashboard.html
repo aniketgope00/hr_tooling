@@ -1,0 +1,571 @@
+{% extends "base_layout.html" %}
+
+{% block title %}Dashboard | hiretribe.{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+  <!-- Header -->
+  <div class="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-4 py-6">
+      <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-900">HR Dashboard</h1>
+        <button id="logout-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Tabs Navigation -->
+    <div class="flex gap-2 mb-8 border-b border-gray-300 overflow-x-auto">
+      <button class="tab-btn active px-4 py-2 font-semibold text-blue-600 border-b-2 border-blue-600" data-tab="jobs">Create Jobs</button>
+      <button class="tab-btn px-4 py-2 font-semibold text-gray-600 border-b-2 border-transparent" data-tab="candidates">Candidates & Feedback</button>
+      <button class="tab-btn px-4 py-2 font-semibold text-gray-600 border-b-2 border-transparent" data-tab="oa">Generate Offers</button>
+      <button class="tab-btn px-4 py-2 font-semibold text-gray-600 border-b-2 border-transparent" data-tab="interview">Schedule Interviews</button>
+      <button class="tab-btn px-4 py-2 font-semibold text-gray-600 border-b-2 border-transparent" data-tab="chat">AI Chat Agent</button>
+    </div>
+
+    <!-- Message Area -->
+    <div id="message-area" class="mb-6"></div>
+
+    <!-- Tab: Create Jobs -->
+    <div id="jobs-tab" class="tab-content block">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-2xl font-bold mb-6 text-gray-900">Create a New Job Post</h2>
+        <form id="create-job-form" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Job Title *</label>
+              <input type="text" name="title" required class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Location *</label>
+              <input type="text" name="location" required class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Description *</label>
+            <textarea name="description" required rows="4" class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600"></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Required Skills (comma-separated) *</label>
+              <input type="text" name="required_skills" required class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" placeholder="e.g., Python, FastAPI, AWS" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Min Experience (years) *</label>
+              <input type="number" name="min_experience_years" required class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Salary Range Min</label>
+              <input type="number" name="salary_range_min" class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Salary Range Max</label>
+              <input type="number" name="salary_range_max" class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" />
+            </div>
+          </div>
+
+          <div class="flex gap-4 pt-4">
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Create Job</button>
+          </div>
+        </form>
+
+        <hr class="my-8" />
+
+        <h3 class="text-xl font-bold mb-4 text-gray-900">Active Jobs</h3>
+        <div id="jobs-list" class="space-y-4">
+          <p class="text-gray-500">Loading jobs...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Candidates & Feedback -->
+    <div id="candidates-tab" class="tab-content hidden">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-2xl font-bold mb-6 text-gray-900">Candidates & AI Feedback</h2>
+        <div id="candidates-list" class="space-y-4">
+          <p class="text-gray-500">Select a job above to view candidates and their AI feedback.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Generate Offers -->
+    <div id="oa-tab" class="tab-content hidden">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-2xl font-bold mb-6 text-gray-900">Generate Offer Assessment</h2>
+        <form id="generate-oa-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Candidate CV Text *</label>
+            <textarea name="cv_text" required rows="6" class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" placeholder="Paste candidate CV or resume..."></textarea>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Job Role/Position *</label>
+            <input type="text" name="role" required class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" placeholder="e.g., Senior Software Engineer" />
+          </div>
+
+          <div>
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Generate Offer</button>
+          </div>
+        </form>
+
+        <hr class="my-8" />
+
+        <div id="oa-result" class="hidden">
+          <h3 class="text-xl font-bold mb-4 text-gray-900">Generated Offer</h3>
+          <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <p id="oa-offer-text" class="text-gray-800 whitespace-pre-wrap mb-4"></p>
+            <p id="oa-feedback" class="text-sm text-gray-600 italic"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Schedule Interviews -->
+    <div id="interview-tab" class="tab-content hidden">
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-2xl font-bold mb-6 text-gray-900">Schedule AI Interview</h2>
+        <form id="schedule-interview-form" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Candidate ID *</label>
+              <input type="text" name="candidate_id" required class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" placeholder="Enter candidate ID" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Job ID *</label>
+              <input type="text" name="job_id" required class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" placeholder="Enter job ID" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Preferred Time (e.g., 2025-11-15T14:00:00)</label>
+            <input type="text" name="preferred_time" class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" />
+          </div>
+
+          <div>
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Schedule Interview</button>
+          </div>
+        </form>
+
+        <hr class="my-8" />
+
+        <div id="interview-result" class="hidden">
+          <h3 class="text-xl font-bold mb-4 text-gray-900">Interview Scheduled</h3>
+          <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+            <p class="text-green-900"><strong>Session ID:</strong> <span id="session-id-display"></span></p>
+            <p class="text-green-900"><strong>Scheduled Time:</strong> <span id="scheduled-time-display"></span></p>
+            <p class="text-green-900"><strong>Agent:</strong> <span id="agent-display"></span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: AI Chat Agent -->
+    <div id="chat-tab" class="tab-content hidden">
+      <div class="bg-white rounded-lg shadow-md p-6 h-[600px] flex flex-col">
+        <h2 class="text-2xl font-bold mb-6 text-gray-900">Chat with AI Agent</h2>
+
+        <div id="chat-messages" class="flex-1 overflow-y-auto mb-4 bg-gray-50 rounded-lg p-4 border border-gray-200 space-y-3">
+          <div class="text-center text-gray-500 text-sm py-4">
+            <p>Enter a session ID to start chatting with the AI agent.</p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <input type="text" id="session-id-input" placeholder="Enter Session ID (from Interview Scheduling)" class="w-full rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" />
+          <form id="chat-form" class="flex gap-2">
+            <input type="text" id="message-input" placeholder="Type your message..." class="flex-1 rounded-md border border-gray-300 shadow-sm px-3 py-2 focus:ring-blue-600 focus:border-blue-600" />
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Send</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+<div id="candidate-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-bold text-gray-900">Candidate Details & AI Feedback</h3>
+      <button id="modal-close" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+    </div>
+    <div id="modal-content" class="space-y-4">
+      <!-- Dynamically filled -->
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block body_extra %}
+<script>
+// Helper to read cookie value
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
+
+// Store current state
+let currentToken = localStorage.getItem('access_token') || getCookie('access_token');
+let currentUser = null;
+let allJobs = [];
+let selectedJobId = null;
+let currentSessionId = null;
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!currentToken) {
+    window.location.href = '/login';
+    return;
+  }
+
+  // Load user info
+  await loadUserInfo();
+  
+  // Setup tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  // Setup logout
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('access_token');
+    document.cookie = 'access_token=; max-age=0;';
+    window.location.href = '/login';
+  });
+
+  // Setup forms
+  document.getElementById('create-job-form').addEventListener('submit', handleCreateJob);
+  document.getElementById('generate-oa-form').addEventListener('submit', handleGenerateOA);
+  document.getElementById('schedule-interview-form').addEventListener('submit', handleScheduleInterview);
+  document.getElementById('chat-form').addEventListener('submit', handleChatMessage);
+
+  // Setup modal close
+  document.getElementById('modal-close').addEventListener('click', () => {
+    document.getElementById('candidate-modal').classList.add('hidden');
+  });
+
+  // Load initial data
+  await loadJobs();
+});
+
+async function loadUserInfo() {
+  try {
+    const res = await fetch('/users/me', {
+      headers: { 'Authorization': `Bearer ${currentToken}` }
+    });
+    if (res.ok) {
+      currentUser = await res.json();
+      document.title = `Dashboard - ${currentUser.full_name || 'User'} | hiretribe.`;
+    }
+  } catch (err) {
+    console.error('Error loading user:', err);
+  }
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+    btn.classList.add('border-transparent', 'text-gray-600');
+  });
+  document.querySelectorAll('.tab-content').forEach(tab => {
+    tab.classList.add('hidden');
+  });
+
+  const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+  activeBtn.classList.add('border-blue-600', 'text-blue-600');
+  activeBtn.classList.remove('border-transparent', 'text-gray-600');
+  document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+}
+
+function showMessage(msg, isError = false) {
+  const area = document.getElementById('message-area');
+  area.innerHTML = `<div class="p-4 rounded-lg ${isError ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}">${msg}</div>`;
+  setTimeout(() => { area.innerHTML = ''; }, 5000);
+}
+
+async function loadJobs() {
+  try {
+    const res = await fetch('/jobs', {
+      headers: { 'Authorization': `Bearer ${currentToken}` }
+    });
+    if (res.ok) {
+      allJobs = await res.json();
+      renderJobs();
+    }
+  } catch (err) {
+    console.error('Error loading jobs:', err);
+  }
+}
+
+function renderJobs() {
+  const list = document.getElementById('jobs-list');
+  if (allJobs.length === 0) {
+    list.innerHTML = '<p class="text-gray-500">No jobs created yet.</p>';
+    return;
+  }
+
+  list.innerHTML = allJobs.map(job => `
+    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+      <div class="flex justify-between items-start mb-2">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900">${job.title}</h3>
+          <p class="text-sm text-gray-600">${job.location || 'N/A'}</p>
+        </div>
+        <span class="px-3 py-1 rounded-full text-xs font-semibold ${job.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${job.status}</span>
+      </div>
+      <p class="text-gray-700 text-sm mb-3">${job.description}</p>
+      <div class="flex gap-2 mb-3">
+        <span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">Skills: ${job.required_skills.join(', ')}</span>
+        <span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">Exp: ${job.min_experience_years}y+</span>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="viewJobCandidates('${job.id}')" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">View Candidates</button>
+        ${job.status !== 'ACTIVE' ? `<button onclick="activateJob('${job.id}')" class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700">Activate</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function handleCreateJob(e) {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = {
+    title: formData.get('title'),
+    location: formData.get('location'),
+    description: formData.get('description'),
+    required_skills: formData.get('required_skills').split(',').map(s => s.trim()),
+    min_experience_years: parseFloat(formData.get('min_experience_years')),
+    salary_range_min: formData.get('salary_range_min') ? parseFloat(formData.get('salary_range_min')) : null,
+    salary_range_max: formData.get('salary_range_max') ? parseFloat(formData.get('salary_range_max')) : null,
+  };
+
+  try {
+    const res = await fetch('/jobs', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${currentToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (res.ok) {
+      const newJob = await res.json();
+      allJobs.push(newJob);
+      renderJobs();
+      e.target.reset();
+      showMessage('Job created successfully!');
+    } else {
+      const err = await res.json();
+      showMessage(`Error: ${err.detail || 'Failed to create job'}`, true);
+    }
+  } catch (err) {
+    console.error('Error:', err);
+    showMessage('Network error', true);
+  }
+}
+
+async function activateJob(jobId) {
+  try {
+    const res = await fetch(`/jobs/${jobId}/activate`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${currentToken}` }
+    });
+    if (res.ok) {
+      await loadJobs();
+      showMessage('Job activated!');
+    }
+  } catch (err) {
+    showMessage('Error activating job', true);
+  }
+}
+
+async function viewJobCandidates(jobId) {
+  selectedJobId = jobId;
+  try {
+    const res = await fetch(`/jobs/${jobId}/candidates`, {
+      headers: { 'Authorization': `Bearer ${currentToken}` }
+    });
+    if (res.ok) {
+      const candidates = await res.json();
+      renderCandidatesTab(candidates);
+      switchTab('candidates');
+    }
+  } catch (err) {
+    console.error('Error:', err);
+  }
+}
+
+function renderCandidatesTab(candidates) {
+  const list = document.getElementById('candidates-list');
+  if (candidates.length === 0) {
+    list.innerHTML = '<p class="text-gray-500">No candidates for this job yet.</p>';
+    return;
+  }
+
+  list.innerHTML = candidates.map(cand => `
+    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition cursor-pointer" onclick="showCandidateDetails('${cand.id}')">
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900">${cand.full_name}</h3>
+          <p class="text-sm text-gray-600">${cand.email}</p>
+          <p class="text-xs text-gray-500">Application Date: ${new Date(cand.application_date).toLocaleDateString()}</p>
+        </div>
+        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">${cand.stage}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function showCandidateDetails(candidateId) {
+  try {
+    const res = await fetch(`/candidates/${candidateId}`, {
+      headers: { 'Authorization': `Bearer ${currentToken}` }
+    });
+    if (res.ok) {
+      const candidate = await res.json();
+      const content = document.getElementById('modal-content');
+      
+      let aiHtml = '';
+      if (candidate.ai) {
+        aiHtml = `
+          <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h4 class="font-semibold text-blue-900 mb-2">AI Analysis</h4>
+            <p class="text-sm"><strong>ATS Score:</strong> ${candidate.ai.ats_score}/100</p>
+            <p class="text-sm mt-2"><strong>Feedback:</strong> ${candidate.ai.feedback}</p>
+            <p class="text-sm mt-2"><strong>Highlights:</strong> ${candidate.ai.highlights.join(', ')}</p>
+          </div>
+        `;
+      }
+
+      content.innerHTML = `
+        <p><strong>Name:</strong> ${candidate.full_name}</p>
+        <p><strong>Email:</strong> ${candidate.email}</p>
+        <p><strong>Stage:</strong> ${candidate.stage}</p>
+        <p><strong>CV:</strong></p>
+        <div class="bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap text-gray-700">${candidate.cv_text || 'N/A'}</div>
+        ${aiHtml}
+      `;
+
+      document.getElementById('candidate-modal').classList.remove('hidden');
+    }
+  } catch (err) {
+    console.error('Error:', err);
+  }
+}
+
+async function handleGenerateOA(e) {
+  e.preventDefault();
+  const cv = document.querySelector('[name="cv_text"]').value;
+  const role = document.querySelector('[name="role"]').value;
+
+  try {
+    const res = await fetch('/ai/generate_oa', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${currentToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ cv_text: cv, role: role })
+    });
+
+    if (res.ok) {
+      const result = await res.json();
+      document.getElementById('oa-offer-text').textContent = result.offer_text;
+      document.getElementById('oa-feedback').textContent = result.feedback;
+      document.getElementById('oa-result').classList.remove('hidden');
+      showMessage('Offer generated!');
+    }
+  } catch (err) {
+    showMessage('Error generating offer', true);
+  }
+}
+
+async function handleScheduleInterview(e) {
+  e.preventDefault();
+  const candidateId = document.querySelector('[name="candidate_id"]').value;
+  const jobId = document.querySelector('[name="job_id"]').value;
+  const preferred = document.querySelector('[name="preferred_time"]').value;
+
+  try {
+    const res = await fetch('/ai/schedule_interview', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${currentToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        candidate_id: candidateId,
+        job_id: jobId,
+        preferred_times: preferred ? [preferred] : []
+      })
+    });
+
+    if (res.ok) {
+      const result = await res.json();
+      currentSessionId = result.session_id;
+      document.getElementById('session-id-display').textContent = result.session_id;
+      document.getElementById('scheduled-time-display').textContent = new Date(result.scheduled_time).toLocaleString();
+      document.getElementById('agent-display').textContent = result.agent;
+      document.getElementById('interview-result').classList.remove('hidden');
+      document.getElementById('session-id-input').value = result.session_id;
+      showMessage('Interview scheduled! You can now chat with the AI agent.');
+    }
+  } catch (err) {
+    showMessage('Error scheduling interview', true);
+  }
+}
+
+async function handleChatMessage(e) {
+  e.preventDefault();
+  const sessionId = document.getElementById('session-id-input').value.trim();
+  const message = document.getElementById('message-input').value.trim();
+
+  if (!sessionId || !message) {
+    showMessage('Enter session ID and message', true);
+    return;
+  }
+
+  // Display user message
+  const chatDiv = document.getElementById('chat-messages');
+  chatDiv.innerHTML += `
+    <div class="text-right">
+      <div class="inline-block bg-blue-600 text-white rounded-lg px-4 py-2 max-w-xs">${message}</div>
+    </div>
+  `;
+
+  try {
+    const res = await fetch(`/ai/agent/${sessionId}/message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ message: message })
+    });
+
+    if (res.ok) {
+      const result = await res.json();
+      chatDiv.innerHTML += `
+        <div class="text-left">
+          <div class="inline-block bg-gray-200 text-gray-900 rounded-lg px-4 py-2 max-w-xs">${result.reply}</div>
+        </div>
+      `;
+      document.getElementById('message-input').value = '';
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
+  } catch (err) {
+    console.error('Error:', err);
+  }
+}
+</script>
+
+{% endblock %}
